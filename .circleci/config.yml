@@ -807,7 +807,7 @@ jobs:
       - run: brew install taiki-e/tap/parse-changelog
       - run:
           name: Create draft release on GitHub
-          command: ./scripts/release/create-github-draft-release.sh "$VERSION"
+          command: ./scripts/release/create-github-draft-release.sh "v$VERSION"
       - slack/notify:
           event: pass
           template: success_tagged_deploy_1

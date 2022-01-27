@@ -7,7 +7,7 @@ set -euo pipefail
 #   ./scripts/release/create-github-draft-release.sh <tag name>
 #
 
-TAG=${1:-$VERSION}
+TAG=${1:-v$VERSION}
 
 set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
