@@ -1,5 +1,5 @@
 import XCTest
-@_spi(Experimental) @testable import MapboxMaps
+@testable import MapboxMaps
 
 final class GestureManagerTests: XCTestCase {
 
@@ -148,6 +148,14 @@ final class GestureManagerTests: XCTestCase {
 
         XCTAssertEqual(quickZoomGestureRecognizer.requireToFailStub.invocations.count, 1)
         XCTAssertTrue(quickZoomGestureRecognizer.requireToFailStub.parameters.first
+                        === doubleTapToZoomInGestureHandler.gestureRecognizer)
+    }
+
+    func testSingleTapGestureRecognizerRequiresDoubleTapToZoomInGestureRecognizerToFail() throws {
+        let singleTapGestureRecognizer = try XCTUnwrap(singleTapGestureHandler.gestureRecognizer as? MockGestureRecognizer)
+
+        XCTAssertEqual(singleTapGestureRecognizer.requireToFailStub.invocations.count, 1)
+        XCTAssertTrue(singleTapGestureRecognizer.requireToFailStub.parameters.first
                         === doubleTapToZoomInGestureHandler.gestureRecognizer)
     }
 
@@ -385,48 +393,77 @@ final class GestureManagerTests: XCTestCase {
     }
 
     func testOptionsPinchRotateEnabled() {
-        XCTAssertEqual(gestureManager.options.pinchRotateEnabled, true)
-        XCTAssertEqual(pinchGestureHandler.rotateEnabled, true)
+        XCTAssertTrue(gestureManager.options.pinchRotateEnabled)
+        XCTAssertTrue(pinchGestureHandler.rotateEnabled)
 
         gestureManager.options.pinchRotateEnabled = false
 
-        XCTAssertEqual(gestureManager.options.pinchRotateEnabled, false)
-        XCTAssertEqual(pinchGestureHandler.rotateEnabled, false)
+        XCTAssertFalse(gestureManager.options.pinchRotateEnabled)
+        XCTAssertFalse(pinchGestureHandler.rotateEnabled)
 
         gestureManager.options.pinchRotateEnabled = true
 
-        XCTAssertEqual(gestureManager.options.pinchRotateEnabled, true)
-        XCTAssertEqual(pinchGestureHandler.rotateEnabled, true)
+        XCTAssertTrue(gestureManager.options.pinchRotateEnabled)
+        XCTAssertTrue(pinchGestureHandler.rotateEnabled)
 
         pinchGestureHandler.rotateEnabled = false
 
-        XCTAssertEqual(gestureManager.options.pinchRotateEnabled, pinchGestureHandler.rotateEnabled)
+        XCTAssertFalse(gestureManager.options.pinchRotateEnabled)
+        XCTAssertFalse(pinchGestureHandler.rotateEnabled)
 
         pinchGestureHandler.rotateEnabled = true
 
-        XCTAssertEqual(gestureManager.options.pinchRotateEnabled, pinchGestureHandler.rotateEnabled)
+        XCTAssertTrue(gestureManager.options.pinchRotateEnabled)
+        XCTAssertTrue(pinchGestureHandler.rotateEnabled)
     }
 
-    func testOptionsPinchBehavior() {
-        XCTAssertEqual(gestureManager.options.pinchBehavior, .tracksTouchLocationsWhenPanningAfterZoomChange)
-        XCTAssertEqual(pinchGestureHandler.behavior, .tracksTouchLocationsWhenPanningAfterZoomChange)
+    func testOptionsPinchZoomEnabled() {
+        XCTAssertTrue(gestureManager.options.pinchZoomEnabled)
+        XCTAssertTrue(pinchGestureHandler.zoomEnabled)
 
-        gestureManager.options.pinchBehavior = .doesNotResetCameraAtEachFrame
+        gestureManager.options.pinchZoomEnabled = false
 
-        XCTAssertEqual(gestureManager.options.pinchBehavior, .doesNotResetCameraAtEachFrame)
-        XCTAssertEqual(pinchGestureHandler.behavior, .doesNotResetCameraAtEachFrame)
+        XCTAssertFalse(gestureManager.options.pinchZoomEnabled)
+        XCTAssertFalse(pinchGestureHandler.zoomEnabled)
 
-        gestureManager.options.pinchBehavior = .tracksTouchLocationsWhenPanningAfterZoomChange
+        gestureManager.options.pinchZoomEnabled = true
 
-        XCTAssertEqual(gestureManager.options.pinchBehavior, .tracksTouchLocationsWhenPanningAfterZoomChange)
-        XCTAssertEqual(pinchGestureHandler.behavior, .tracksTouchLocationsWhenPanningAfterZoomChange)
+        XCTAssertTrue(gestureManager.options.pinchZoomEnabled)
+        XCTAssertTrue(pinchGestureHandler.zoomEnabled)
 
-        pinchGestureHandler.behavior = .doesNotResetCameraAtEachFrame
+        pinchGestureHandler.zoomEnabled = false
 
-        XCTAssertEqual(gestureManager.options.pinchBehavior, pinchGestureHandler.behavior)
+        XCTAssertFalse(gestureManager.options.pinchZoomEnabled)
+        XCTAssertFalse(pinchGestureHandler.zoomEnabled)
 
-        pinchGestureHandler.behavior = .tracksTouchLocationsWhenPanningAfterZoomChange
+        pinchGestureHandler.zoomEnabled = true
 
-        XCTAssertEqual(gestureManager.options.pinchBehavior, pinchGestureHandler.behavior)
+        XCTAssertTrue(gestureManager.options.pinchZoomEnabled)
+        XCTAssertTrue(pinchGestureHandler.zoomEnabled)
+    }
+
+    func testOptionsPinchPanEnabled() {
+        XCTAssertTrue(gestureManager.options.pinchPanEnabled)
+        XCTAssertTrue(pinchGestureHandler.panEnabled)
+
+        gestureManager.options.pinchPanEnabled = false
+
+        XCTAssertFalse(gestureManager.options.pinchPanEnabled)
+        XCTAssertFalse(pinchGestureHandler.panEnabled)
+
+        gestureManager.options.pinchPanEnabled = true
+
+        XCTAssertTrue(gestureManager.options.pinchPanEnabled)
+        XCTAssertTrue(pinchGestureHandler.panEnabled)
+
+        pinchGestureHandler.panEnabled = false
+
+        XCTAssertFalse(gestureManager.options.pinchPanEnabled)
+        XCTAssertFalse(pinchGestureHandler.panEnabled)
+
+        pinchGestureHandler.panEnabled = true
+
+        XCTAssertTrue(gestureManager.options.pinchPanEnabled)
+        XCTAssertTrue(pinchGestureHandler.panEnabled)
     }
 }

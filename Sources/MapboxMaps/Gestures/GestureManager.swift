@@ -21,7 +21,8 @@ public final class GestureManager: GestureHandlerDelegate {
             panGestureRecognizer.isEnabled = newValue.panEnabled
             pinchGestureRecognizer.isEnabled = newValue.pinchEnabled
             pinchGestureHandler.rotateEnabled = newValue.pinchRotateEnabled
-            pinchGestureHandler.behavior = newValue.pinchBehavior
+            pinchGestureHandler.zoomEnabled = newValue.pinchZoomEnabled
+            pinchGestureHandler.panEnabled = newValue.pinchPanEnabled
             pitchGestureRecognizer.isEnabled = newValue.pitchEnabled
             doubleTapToZoomInGestureRecognizer.isEnabled = newValue.doubleTapToZoomInEnabled
             doubleTouchToZoomOutGestureRecognizer.isEnabled = newValue.doubleTouchToZoomOutEnabled
@@ -34,7 +35,8 @@ public final class GestureManager: GestureHandlerDelegate {
             gestureOptions.panEnabled = panGestureRecognizer.isEnabled
             gestureOptions.pinchEnabled = pinchGestureRecognizer.isEnabled
             gestureOptions.pinchRotateEnabled = pinchGestureHandler.rotateEnabled
-            gestureOptions.pinchBehavior = pinchGestureHandler.behavior
+            gestureOptions.pinchZoomEnabled = pinchGestureHandler.zoomEnabled
+            gestureOptions.pinchPanEnabled = pinchGestureHandler.panEnabled
             gestureOptions.pitchEnabled = pitchGestureRecognizer.isEnabled
             gestureOptions.doubleTapToZoomInEnabled = doubleTapToZoomInGestureRecognizer.isEnabled
             gestureOptions.doubleTouchToZoomOutEnabled = doubleTouchToZoomOutGestureRecognizer.isEnabled
@@ -65,7 +67,7 @@ public final class GestureManager: GestureHandlerDelegate {
         return doubleTapToZoomInGestureHandler.gestureRecognizer
     }
 
-    /// The gesture recognizer for the "double tap to zoom out" gesture
+    /// The gesture recognizer for the "double touch to zoom out" gesture
     public var doubleTouchToZoomOutGestureRecognizer: UIGestureRecognizer {
         return doubleTouchToZoomOutGestureHandler.gestureRecognizer
     }
@@ -130,6 +132,7 @@ public final class GestureManager: GestureHandlerDelegate {
         pinchGestureHandler.gestureRecognizer.require(toFail: panGestureHandler.gestureRecognizer)
         pitchGestureHandler.gestureRecognizer.require(toFail: panGestureHandler.gestureRecognizer)
         quickZoomGestureHandler.gestureRecognizer.require(toFail: doubleTapToZoomInGestureHandler.gestureRecognizer)
+        singleTapGestureHandler.gestureRecognizer.require(toFail: doubleTapToZoomInGestureHandler.gestureRecognizer)
 
         // Invoke the setter to ensure the defaults are synchronized
         self.options = GestureOptions()
@@ -140,12 +143,12 @@ public final class GestureManager: GestureHandlerDelegate {
         delegate?.gestureManager(self, didBegin: gestureType)
     }
 
-    func gestureEnded(for gestureType: GestureType, willAnimate: Bool) {
+    internal func gestureEnded(for gestureType: GestureType, willAnimate: Bool) {
         mapboxMap.endGesture()
         delegate?.gestureManager(self, didEnd: gestureType, willAnimate: willAnimate)
     }
 
-    func animationEnded(for gestureType: GestureType) {
+    internal func animationEnded(for gestureType: GestureType) {
         delegate?.gestureManager(self, didEndAnimatingFor: gestureType)
     }
 }

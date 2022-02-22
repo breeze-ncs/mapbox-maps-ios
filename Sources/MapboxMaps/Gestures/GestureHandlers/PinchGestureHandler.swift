@@ -2,86 +2,110 @@ import UIKit
 
 internal protocol PinchGestureHandlerProtocol: GestureHandler {
     var rotateEnabled: Bool { get set }
-    var behavior: PinchGestureBehavior { get set }
-}
-
-internal protocol PinchGestureHandlerImpl: AnyObject {
-    func handleGesture(_ gestureRecognizer: UIPinchGestureRecognizer, state: UIGestureRecognizer.State)
+    var zoomEnabled: Bool { get set }
+    var panEnabled: Bool { get set }
 }
 
 /// `PinchGestureHandler` updates the map camera in response to a 2-touch
 /// gesture that may consist of translation, scaling, and rotation
 internal final class PinchGestureHandler: GestureHandler, PinchGestureHandlerProtocol {
     /// Whether pinch gesture can rotate map or not
-    internal var rotateEnabled: Bool = true {
-        didSet {
-            impl1.rotateEnabled = rotateEnabled
-            impl2.rotateEnabled = rotateEnabled
-        }
-    }
+    internal var rotateEnabled: Bool = true
 
-    internal var behavior: PinchGestureBehavior = .tracksTouchLocationsWhenPanningAfterZoomChange
+    /// Whether pinch gesture can zoom map or not
+    internal var zoomEnabled: Bool = true
 
-    private var initialBehavior: PinchGestureBehavior?
+    /// Whether pinch gesture can pan map or not
+    internal var panEnabled: Bool = true
 
-    private let impl1: PinchGestureHandlerImpl1
+    /// The behavior for the current gesture, based on the initial state of the \*Enabled flags.
+    private var pinchBehavior: PinchBehavior?
 
-    private let impl2: PinchGestureHandlerImpl2
+    private var invokedGestureBegan = false
+
+    private let mapboxMap: MapboxMapProtocol
+
+    private let pinchBehaviorProvider: PinchBehaviorProviderProtocol
 
     /// Initialize the handler which creates the panGestureRecognizer and adds to the view
     internal init(gestureRecognizer: UIPinchGestureRecognizer,
-                  mapboxMap: MapboxMapProtocol) {
-        self.impl1 = PinchGestureHandlerImpl1(mapboxMap: mapboxMap)
-        self.impl2 = PinchGestureHandlerImpl2(mapboxMap: mapboxMap)
+                  mapboxMap: MapboxMapProtocol,
+                  pinchBehaviorProvider: PinchBehaviorProviderProtocol) {
+        self.mapboxMap = mapboxMap
+        self.pinchBehaviorProvider = pinchBehaviorProvider
         super.init(gestureRecognizer: gestureRecognizer)
         gestureRecognizer.addTarget(self, action: #selector(handleGesture(_:)))
-        impl1.delegate = self
-        impl2.delegate = self
     }
 
     @objc private func handleGesture(_ gestureRecognizer: UIPinchGestureRecognizer) {
-        let effectiveBehavior: PinchGestureBehavior?
-
-        let state = gestureRecognizer.state
-
-        switch state {
+        guard let view = gestureRecognizer.view else {
+            return
+        }
+        switch gestureRecognizer.state {
         case .began:
-            effectiveBehavior = behavior
-            initialBehavior = behavior
+            // UIPinchGestureRecognizer sometimes begins with 1 touch.
+            // If that happens, we ignore it here, but will start handling it
+            // in .changed if the number of touches increases to 2.
+            guard gestureRecognizer.numberOfTouches == 2 else {
+                return
+            }
+            start(with: gestureRecognizer)
         case .changed:
-            effectiveBehavior = initialBehavior
-        case .cancelled, .ended:
-            effectiveBehavior = initialBehavior
-            initialBehavior = nil
+            // UIPinchGestureRecognizer sends a .changed event when the number
+            // of touches decreases from 2 to 1. If this happens, we pause our
+            // gesture handling.
+            //
+            // if a second touch goes down again before the gesture ends, we
+            // resume and re-capture the initial state
+            guard gestureRecognizer.numberOfTouches == 2 else {
+                pinchBehavior = nil
+                gestureRecognizer.scale = 1
+                return
+            }
+
+            if let pinchBehavior = pinchBehavior {
+                pinchBehavior.update(
+                    pinchMidpoint: gestureRecognizer.location(in: view),
+                    pinchScale: gestureRecognizer.scale,
+                    pinchAngle: pinchAngle(with: gestureRecognizer))
+            } else {
+                start(with: gestureRecognizer)
+            }
+        case .ended, .cancelled:
+            pinchBehavior = nil
+            if invokedGestureBegan {
+                delegate?.gestureEnded(for: .pinch, willAnimate: false)
+            }
+            invokedGestureBegan = false
         default:
-            effectiveBehavior = nil
+            break
         }
+    }
 
-        let impl: PinchGestureHandlerImpl?
-
-        switch effectiveBehavior {
-        case .tracksTouchLocationsWhenPanningAfterZoomChange:
-            impl = impl1
-        case .doesNotResetCameraAtEachFrame:
-            impl = impl2
-        default:
-            impl = nil
+    private func start(with gestureRecognizer: UIPinchGestureRecognizer) {
+        guard let view = gestureRecognizer.view else {
+            return
         }
-
-        impl?.handleGesture(gestureRecognizer, state: state)
+        pinchBehavior = pinchBehaviorProvider.makePinchBehavior(
+            panEnabled: panEnabled,
+            zoomEnabled: zoomEnabled,
+            rotateEnabled: rotateEnabled,
+            initialCameraState: mapboxMap.cameraState,
+            initialPinchMidpoint: gestureRecognizer.location(in: view),
+            initialPinchAngle: pinchAngle(with: gestureRecognizer))
+        // if this is the first time we started handling the gesture, inform
+        // the delegate.
+        if !invokedGestureBegan {
+            invokedGestureBegan = true
+            delegate?.gestureBegan(for: .pinch)
+        }
     }
-}
 
-extension PinchGestureHandler: GestureHandlerDelegate {
-    func gestureBegan(for gestureType: GestureType) {
-        delegate?.gestureBegan(for: gestureType)
-    }
-
-    func gestureEnded(for gestureType: GestureType, willAnimate: Bool) {
-        delegate?.gestureEnded(for: gestureType, willAnimate: willAnimate)
-    }
-
-    func animationEnded(for gestureType: GestureType) {
-        delegate?.animationEnded(for: gestureType)
+    private func pinchAngle(with gestureRecognizer: UIPinchGestureRecognizer) -> CGFloat {
+        // we guard for this at the call site
+        let view = gestureRecognizer.view!
+        let pinchPoint0 = gestureRecognizer.location(ofTouch: 0, in: view)
+        let pinchPoint1 = gestureRecognizer.location(ofTouch: 1, in: view)
+        return atan2(pinchPoint1.y - pinchPoint0.y, pinchPoint1.x - pinchPoint0.x)
     }
 }
